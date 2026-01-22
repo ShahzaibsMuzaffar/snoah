@@ -1,0 +1,434 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NOVAH AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <style>
+        body { position: fixed; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+        .chat-scroll::-webkit-scrollbar { width: 4px; }
+        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .message-enter { animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        .prose p { margin-bottom: 0.8em; } .prose p:last-child { margin-bottom: 0; }
+        .prose pre { margin: 0 !important; padding: 1rem !important; background: #0d1117 !important; overflow-x: auto; }
+        .code-wrapper { position: relative; margin: 0.8em 0; border-radius: 0.5rem; overflow: hidden; border: 1px solid #334155; background: #0d1117; }
+        .code-header { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 0.5rem 1rem; border-bottom: 1px solid #334155; color: #8b949e; font-size: 0.75rem; font-weight: 600; }
+        .code-actions { display: flex; gap: 0.5rem; }
+        .code-btn { background: transparent; border: none; color: #8b949e; cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; transition: color 0.2s; }
+        .code-btn:hover { color: #fff; }
+        .prose :not(pre) > code { background: rgba(0,0,0,0.1); padding: 0.2rem 0.4rem; border-radius: 0.3rem; color: #ef4444; font-weight: 500; font-size: 0.9em; font-family: monospace; }
+        .user-bubble .prose :not(pre) > code { background: rgba(255,255,255,0.2); color: white; }
+        .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.8em; }
+        .prose ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 0.8em; }
+        .prose a { color: #3b82f6; text-decoration: underline; }
+        .katex-display { margin: 1em 0; overflow-x: auto; overflow-y: hidden; }
+        .katex { font-size: 1.1em; }
+        
+        .toggle-checkbox:checked { right: 0; border-color: #4f46e5; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #4f46e5; }
+        .toggle-checkbox:checked + .toggle-label-green { background-color: #10b981; }
+
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] summary ~ * { animation: sweep .3s ease-in-out; }
+        @keyframes sweep { 0% {opacity: 0; transform: translateY(-10px)} 100% {opacity: 1; transform: translateY(0)} }
+    </style>
+</head>
+<body class="bg-[#f0f2f5] text-slate-800 flex h-full w-full">
+
+    <div id="chat-section" class="flex flex-col h-full w-full transition-all duration-300 relative z-10">
+        <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0 z-50 h-[72px]">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                    <i class="fa-solid fa-brain text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-800 leading-tight">NOVAH</h1>
+                    <p class="text-xs text-slate-500 font-medium">Model: NOVAHLLM</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <div id="canvas-indicator" class="hidden px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-bold items-center gap-1">
+                    <i class="fa-solid fa-palette"></i> Canvas
+                </div>
+                <div id="think-indicator" class="hidden px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold items-center gap-1">
+                    <i class="fa-solid fa-lightbulb"></i> Thinking
+                </div>
+                <button onclick="toggleSettings()" class="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </header>
+
+        <main id="chat-messages" class="flex-1 overflow-y-auto chat-scroll p-4 sm:p-6 space-y-6 bg-[#f8fafc] relative z-0 pb-20">
+            <div class="flex justify-start message-enter">
+                <div class="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-indigo-600 text-xs shadow-sm mt-1 mr-3 shrink-0">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div class="bg-white border border-slate-100 text-slate-700 rounded-2xl rounded-tl-none py-3 px-5 shadow-sm max-w-[85%] sm:max-w-[75%]">
+                    <p class="text-[15px] leading-relaxed">Hello! I am NOVAH. I'm connected and ready.</p>
+                </div>
+            </div>
+        </main>
+
+        <div id="typing-indicator" class="hidden absolute bottom-[90px] left-6 z-20 pointer-events-none">
+            <div class="bg-white/90 backdrop-blur border border-slate-200 rounded-2xl py-2 px-4 shadow-md flex items-center gap-1.5">
+                <div class="w-1.5 h-1.5 bg-indigo-500 rounded-full typing-dot"></div>
+                <div class="w-1.5 h-1.5 bg-indigo-500 rounded-full typing-dot"></div>
+                <div class="w-1.5 h-1.5 bg-indigo-500 rounded-full typing-dot"></div>
+            </div>
+        </div>
+
+        <footer class="bg-white border-t border-slate-200 p-4 shrink-0 z-30 relative shadow-[0_-5px_20px_-10px_rgba(0,0,0,0.05)]">
+            <form id="chat-form" class="max-w-4xl mx-auto relative flex gap-3 items-end">
+                <div class="flex-1 bg-slate-100 rounded-2xl flex items-center p-1 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:bg-white transition-all border border-transparent focus-within:border-indigo-200">
+                    <textarea id="user-input" placeholder="Message or /image description..." class="w-full bg-transparent text-slate-800 border-none rounded-xl px-4 py-3 focus:outline-none placeholder-slate-400 resize-none max-h-32 text-[15px]" rows="1" style="height: 48px;"></textarea>
+                </div>
+                <button type="submit" id="send-btn" class="w-12 h-12 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full flex items-center justify-center transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shrink-0 mb-[1px]">
+                    <i class="fa-solid fa-paper-plane text-sm"></i>
+                </button>
+            </form>
+        </footer>
+    </div>
+
+    <div id="canvas-section" class="fixed inset-0 z-40 bg-white transform translate-x-full transition-transform duration-300 flex flex-col shadow-2xl sm:static sm:w-0 sm:border-l sm:border-slate-200 sm:translate-x-0 overflow-hidden">
+        <div class="h-[72px] border-b border-slate-200 px-4 flex items-center justify-between bg-slate-50 shrink-0">
+            <h3 class="font-bold text-slate-700 flex items-center gap-2"><i class="fa-solid fa-code text-indigo-500"></i> App Canvas</h3>
+            <div class="flex gap-2">
+                <button onclick="closeCanvas()" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-lg sm:hidden"><i class="fa-solid fa-xmark"></i> Close</button>
+                <button onclick="closeCanvas()" class="hidden sm:block p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-lg"><i class="fa-solid fa-expand"></i></button>
+            </div>
+        </div>
+        <div class="flex-1 relative bg-slate-100">
+            <iframe id="canvas-frame" class="w-full h-full border-none bg-white"></iframe>
+        </div>
+    </div>
+
+    <div id="settings-panel" class="hidden absolute top-[73px] right-0 sm:right-6 w-full sm:w-96 bg-white/95 backdrop-blur-xl border-b sm:border border-slate-200 sm:rounded-b-xl p-6 z-[60] shadow-2xl transform transition-all duration-300">
+        <div class="space-y-5">
+            <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                <h3 class="font-semibold text-slate-700">Settings</h3>
+                <button onclick="toggleSettings()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Thinking Toggle -->
+            <div class="flex items-center justify-between">
+                <div><span class="text-sm font-bold text-slate-700">Thinking Mode</span><p class="text-[10px] text-slate-500">Deep reasoning chains</p></div>
+                <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="think-toggle" id="think-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300"/>
+                    <label for="think-toggle" class="toggle-label-green block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                </div>
+            </div>
+
+            <!-- Canvas Toggle -->
+            <div class="flex items-center justify-between">
+                <div><span class="text-sm font-bold text-slate-700">Canvas Mode</span><p class="text-[10px] text-slate-500">Generate full web apps</p></div>
+                <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="canvas-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300"/>
+                    <label for="canvas-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                </div>
+            </div>
+            
+            <p class="text-xs text-slate-400 text-center pt-2">Powered by 🅾shahzaib_muzaffar_7 </p>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'novah_config_v27';
+        
+        // PICO API KEYS (Hardcoded)
+        const PICO_LLM = "https://backend.buildpicoapps.com/aero/run/llm-api?pk=v1-Z0FBQUFBQnBab1RZWFppdTZJZFpYdC1kdnlIRXhpc2hhUTN0WldDek5YbmNaT3VicXdNZkdvaElWRTZaS1hHaXFjODhXY0hMM2c3YUhFM0UtNmRPdUpEQ2p5OTcwUFo5WUE9PQ==";
+        const PICO_IMG = "https://backend.buildpicoapps.com/aero/run/image-generation-api?pk=v1-Z0FBQUFBQnBab1RZWFppdTZJZFpYdC1kdnlIRXhpc2hhUTN0WldDek5YbmNaT3VicXdNZkdvaElWRTZaS1hHaXFjODhXY0hMM2c3YUhFM0UtNmRPdUpEQ2p5OTcwUFo5WUE9PQ==";
+
+        const STATE = {
+            canvasEnabled: false,
+            thinkEnabled: false
+        };
+        
+        let savedState = localStorage.getItem(STORAGE_KEY);
+        if (savedState) Object.assign(STATE, JSON.parse(savedState));
+
+        const els = { 
+            chatSection: document.getElementById('chat-section'), 
+            canvasSection: document.getElementById('canvas-section'), 
+            canvasFrame: document.getElementById('canvas-frame'), 
+            canvasToggle: document.getElementById('canvas-toggle'), 
+            thinkToggle: document.getElementById('think-toggle'),
+            canvasIndicator: document.getElementById('canvas-indicator'), 
+            thinkIndicator: document.getElementById('think-indicator')
+        };
+
+        function init() {
+            els.canvasToggle.checked = STATE.canvasEnabled;
+            els.thinkToggle.checked = STATE.thinkEnabled;
+            updateIndicators();
+            
+            els.canvasToggle.addEventListener('change', () => { STATE.canvasEnabled = els.canvasToggle.checked; saveState(); updateIndicators(); });
+            els.thinkToggle.addEventListener('change', () => { STATE.thinkEnabled = els.thinkToggle.checked; saveState(); updateIndicators(); });
+        }
+
+        function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }
+        
+        function updateIndicators() { 
+            if (STATE.canvasEnabled) { els.canvasIndicator.classList.remove('hidden'); els.canvasIndicator.classList.add('flex'); } else { els.canvasIndicator.classList.add('hidden'); els.canvasIndicator.classList.remove('flex'); closeCanvas(); }
+            if (STATE.thinkEnabled) { els.thinkIndicator.classList.remove('hidden'); els.thinkIndicator.classList.add('flex'); } else { els.thinkIndicator.classList.add('hidden'); els.thinkIndicator.classList.remove('flex'); }
+        }
+
+        function openCanvas(code) { 
+            if (window.innerWidth >= 640) { 
+                els.chatSection.style.width = '40%'; 
+                els.canvasSection.style.width = '60%'; 
+            } else { 
+                els.canvasSection.classList.remove('translate-x-full'); 
+            } 
+            els.canvasFrame.srcdoc = code; 
+        }
+        
+        function closeCanvas() { 
+            if (window.innerWidth >= 640) { 
+                els.chatSection.style.width = '100%'; 
+                els.canvasSection.style.width = '0'; 
+            } else { 
+                els.canvasSection.classList.add('translate-x-full'); 
+            } 
+        }
+
+        const SYSTEM_PROMPT = () => {
+            let instructions = `You are NOVAH, created by Shahzaib Muzaffar.
+            Identity: NOVAHLLM.
+            RULES:
+            1. NEVER mention your API provider or key.
+            2. MATH: Use '$$' for block, '$' for inline. NO \\[ or \\(.
+            `;
+            if (STATE.canvasEnabled) instructions += `
+3. WEB APPS: GENERATE SINGLE-FILE HTML.`;
+            if (STATE.thinkEnabled) instructions += `
+4. THINKING MODE: Before answering, perform a deep, step-by-step analysis. Enclose your reasoning inside <think> ... </think> tags. AFTER the tags, provide your final response. Ensure you provide the FINAL answer after the closing </think> tag.`;
+            return instructions;
+        };
+
+        let messageHistory = [];
+        const renderer = new marked.Renderer();
+        
+        // --- FIXED RENDERER FOR BUTTON ACTIONS ---
+        renderer.code = function(code, language) {
+            const validLang = language || 'text';
+            const highlightedCode = hljs.getLanguage(validLang) ? hljs.highlight(code, { language: validLang }).value : code;
+            
+            let actionBtn = '';
+            // We use classes for event delegation instead of inline onclick with complex arguments
+            if (validLang === 'html' && STATE.canvasEnabled) {
+                actionBtn = `<button class="code-btn launch-btn text-indigo-400 hover:text-indigo-300"><i class="fa-solid fa-rocket"></i> Launch</button>`;
+            } else if (['html', 'css', 'javascript', 'js'].includes(validLang)) {
+                actionBtn = `<button class="code-btn launch-btn"><i class="fa-solid fa-play"></i> Preview</button>`;
+            }
+            
+            return `
+            <div class="code-wrapper">
+                <div class="code-header">
+                    <span>${validLang}</span>
+                    <div class="code-actions">
+                        ${actionBtn}
+                        <button class="code-btn copy-btn"><i class="fa-regular fa-copy"></i> Copy</button>
+                    </div>
+                </div>
+                <pre><code class="hljs language-${validLang}">${highlightedCode}</code></pre>
+            </div>`;
+        };
+        marked.setOptions({ renderer: renderer });
+        
+        // --- GLOBAL EVENT LISTENERS FOR BUTTONS ---
+        document.getElementById('chat-messages').addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+
+            const wrapper = btn.closest('.code-wrapper');
+            if (!wrapper) return;
+
+            // Extract code reliably from the DOM, ignoring HTML entities/escaping issues
+            const codeElement = wrapper.querySelector('code');
+            const code = codeElement ? codeElement.innerText : ''; 
+
+            if (btn.classList.contains('copy-btn')) {
+                navigator.clipboard.writeText(code).then(() => {
+                    const i = btn.querySelector('i');
+                    i.className = 'fa-solid fa-check text-green-500';
+                    setTimeout(() => i.className = 'fa-regular fa-copy', 2000);
+                });
+            } else if (btn.classList.contains('launch-btn')) {
+                openCanvas(code);
+            }
+        });
+
+        window.toggleSettings = () => document.getElementById('settings-panel').classList.toggle('hidden'); 
+        window.closeCanvas = closeCanvas;
+
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        
+        userInput.addEventListener('input', function() { 
+            this.style.height = 'auto'; 
+            this.style.height = Math.min(this.scrollHeight, 128) + 'px'; 
+            if (this.value === '') this.style.height = '48px'; 
+        });
+        
+        userInput.addEventListener('keydown', e => { 
+            if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                document.getElementById('chat-form').dispatchEvent(new Event('submit')); 
+            } 
+        });
+        
+        window.visualViewport.addEventListener('resize', () => { 
+            if (window.visualViewport.height < window.innerHeight && document.documentElement.scrollTop > 0) window.scrollTo(0, 0); 
+        });
+
+        function scrollToBottom() { chatMessages.scrollTop = chatMessages.scrollHeight; }
+        
+        function renderMath(element) { 
+            if (window.renderMathInElement) { 
+                renderMathInElement(element, { 
+                    delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}], 
+                    throwOnError: false 
+                }); 
+            } 
+        }
+
+        function addMessage(content, role) {
+            const isUser = role === 'user';
+            const div = document.createElement('div');
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} message-enter`;
+            
+            let finalContent = content;
+            let thoughtContent = null;
+            let isImage = content.startsWith('http'); 
+
+            if (!isUser) {
+                // FIXED THINKING PARSING
+                // We split by closing tag first to robustly separate thoughts from response
+                const parts = content.split('</think>');
+                if (parts.length > 1) {
+                    // Remove opening tag from the first part
+                    thoughtContent = parts[0].replace('<think>', '').trim();
+                    // Join the rest as the final answer (in case multiple tags exist, though unlikely)
+                    finalContent = parts.slice(1).join('</think>').trim();
+                } else {
+                    // Fallback: Check if start tag exists but no end tag (cut off)
+                    if (content.includes('<think>')) {
+                        thoughtContent = content.replace('<think>', '').trim();
+                        finalContent = "... (Thinking in progress or cut off)";
+                    }
+                }
+                
+                // If thought content is empty or undefined, treat whole message as content
+                if (!thoughtContent) {
+                    finalContent = content;
+                }
+            }
+
+            if (isUser) {
+                div.innerHTML = `<div class="user-bubble bg-indigo-600 text-white rounded-2xl rounded-tr-sm py-3 px-5 shadow-md max-w-[85%] sm:max-w-[75%] text-[15px] prose prose-invert break-words leading-relaxed">${finalContent.replace(/\n/g, '<br>')}</div>`;
+            } else {
+                if (isImage) {
+                    div.innerHTML = `<div class="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-indigo-600 text-xs shadow-sm mt-1 mr-3 shrink-0"><i class="fa-solid fa-brain"></i></div><div class="max-w-[85%] sm:max-w-[75%]"><img src="${content}" class="rounded-xl shadow-md border-4 border-slate-200" onload="scrollToBottom()"></div>`;
+                } else {
+                    let html = `<div class="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-indigo-600 text-xs shadow-sm mt-1 mr-3 shrink-0 h-fit"><i class="fa-solid fa-brain"></i></div><div class="flex-1 max-w-[85%] sm:max-w-[75%]">`;
+                    
+                    if (thoughtContent) {
+                        html += `
+                        <details class="mb-3 border border-indigo-100 bg-indigo-50 rounded-lg overflow-hidden group">
+                            <summary class="px-3 py-2 text-xs font-bold text-indigo-600 cursor-pointer hover:bg-indigo-100 select-none flex items-center gap-2 transition-colors">
+                                <i class="fa-solid fa-lightbulb group-open:text-amber-500"></i> Thought Process 
+                                <i class="fa-solid fa-chevron-down ml-auto text-[10px] opacity-50 group-open:rotate-180 transition-transform"></i>
+                            </summary>
+                            <div class="p-3 text-xs text-slate-600 font-mono leading-relaxed border-t border-indigo-100 bg-white/50 whitespace-pre-wrap">${thoughtContent}</div>
+                        </details>`;
+                    }
+                    
+                    // Only render final content if it exists
+                    if (finalContent) {
+                        html += `<div class="bot-bubble bg-white border border-slate-100 text-slate-700 rounded-2xl rounded-tl-none py-3 px-5 shadow-sm text-[15px] prose prose-slate break-words leading-relaxed w-full overflow-hidden">${marked.parse(finalContent)}</div>`;
+                    }
+                    html += `</div>`;
+                    div.innerHTML = html;
+                }
+            }
+            
+            chatMessages.appendChild(div);
+            if (!isUser && !isImage) renderMath(div.querySelector('.bot-bubble'));
+            scrollToBottom();
+            
+            if (role === 'user') messageHistory.push(`User: ${content}`);
+            else if (!isImage) messageHistory.push(`AI: ${content}`);
+        }
+
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            let text = userInput.value.trim();
+            if (!text) return;
+            
+            // Check for /image command
+            const isImageGen = text.startsWith('/image');
+            if (isImageGen) text = text.substring(7).trim();
+
+            addMessage(userInput.value, 'user');
+            userInput.value = ''; userInput.style.height = '48px'; userInput.disabled = true; document.getElementById('send-btn').disabled = true; document.getElementById('typing-indicator').classList.remove('hidden'); scrollToBottom();
+            
+            try {
+                let apiUrl = PICO_LLM;
+                let payload = {};
+
+                if (isImageGen) {
+                    apiUrl = PICO_IMG;
+                    payload = { prompt: text };
+                } else {
+                    const history = messageHistory.slice(-6).join("\n");
+                    const fullPrompt = `${SYSTEM_PROMPT()}\n\n${history}\nUser: ${text}\nAI:`;
+                    payload = { prompt: fullPrompt };
+                }
+
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                document.getElementById('typing-indicator').classList.add('hidden');
+                
+                if (data.status === 'success') {
+                    if (isImageGen && data.imageUrl) {
+                        addMessage(data.imageUrl, 'assistant');
+                    } else {
+                        addMessage(data.text, 'assistant');
+                    }
+                } else {
+                    throw new Error("API status: " + data.status);
+                }
+
+            } catch (err) {
+                document.getElementById('typing-indicator').classList.add('hidden');
+                addMessage(`**Error:** ${err.message}`, 'assistant');
+            }
+            userInput.disabled = false; document.getElementById('send-btn').disabled = false; userInput.focus();
+        });
+        init();
+    </script>
+</body>
+</html>
